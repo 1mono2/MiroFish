@@ -15,7 +15,7 @@
             :class="{ active: viewMode === mode }"
             @click="viewMode = mode"
           >
-            {{ { graph: '图谱', split: '双栏', workbench: '工作台' }[mode] }}
+            {{ { graph: 'グラフ', split: '分割表示', workbench: 'ワークベンチ' }[mode] }}
           </button>
         </div>
       </div>
@@ -91,7 +91,7 @@ const viewMode = ref('split') // graph | split | workbench
 
 // Step State
 const currentStep = ref(1) // 1: 图谱构建, 2: 环境搭建, 3: 开始模拟, 4: 报告生成, 5: 深度互动
-const stepNames = ['图谱构建', '环境搭建', '开始模拟', '报告生成', '深度互动']
+const stepNames = ['グラフ構築', '環境セットアップ', 'シミュレーション開始', 'レポート生成', '深層インタラクション']
 
 // Data State
 const currentProjectId = ref(route.params.projectId)
