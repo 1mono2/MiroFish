@@ -28,13 +28,42 @@
               <span class="et-count">{{ entityTypeCounts[type] }}体</span>
             </label>
           </div>
-          <div v-if="!fetchingEntityTypes" class="estimate-row">
-            <span class="estimate-label">推定エージェント数</span>
+          <div v-if="!fetchingEntityTypes && estimatedAgentCount > 0" class="estimate-row">
+            <span class="estimate-label">対象エンティティ数</span>
             <span class="estimate-value" :class="{ 'estimate-warn': estimatedAgentCount > 40 }">
               {{ estimatedAgentCount }} 体
             </span>
-            <span v-if="estimatedAgentCount > 40" class="estimate-tip">40体以下を推奨</span>
-            <span v-else-if="estimatedAgentCount > 0" class="estimate-ok">推奨範囲内</span>
+            <span v-if="estimatedAgentCount > 40" class="estimate-tip">上限設定を推奨</span>
+          </div>
+        </div>
+
+        <!-- 最大エージェント数 -->
+        <div class="pre-config-section">
+          <div class="pre-config-label">
+            最大エージェント数
+            <span class="pre-config-hint">（推奨: 20〜30体）</span>
+          </div>
+          <div class="rounds-inline">
+            <input
+              type="range"
+              v-model.number="maxAgents"
+              min="5"
+              max="100"
+              step="5"
+              class="minimal-slider"
+              :style="{ '--percent': ((maxAgents - 5) / (100 - 5)) * 100 + '%' }"
+            />
+            <div class="rounds-inline-info">
+              <span class="rounds-inline-value">{{ maxAgents }} 体</span>
+              <span class="rounds-inline-est" :class="{ 'estimate-warn': maxAgents > 40 }">
+                {{ maxAgents > 40 ? '多め・時間・コスト増' : maxAgents <= 20 ? '軽量・高速' : '推奨範囲内' }}
+              </span>
+            </div>
+          </div>
+          <div class="pre-range-marks">
+            <span>5</span>
+            <span class="mark-recommend" :class="{ active: maxAgents === 20 }" @click="maxAgents = 20">20 (推奨)</span>
+            <span>100</span>
           </div>
         </div>
 
@@ -760,6 +789,8 @@ const entityTypeCounts = ref({})
 const selectedEntityTypes = ref([])
 const fetchingEntityTypes = ref(false)
 
+const maxAgents = ref(20)  // デフォルト20体
+
 const estimatedAgentCount = computed(() => {
   return selectedEntityTypes.value.reduce((sum, type) => sum + (entityTypeCounts.value[type] || 0), 0)
 })
@@ -919,6 +950,9 @@ const startPrepareSimulation = async () => {
     }
     if (selectedEntityTypes.value.length > 0) {
       prepareParams.entity_types = selectedEntityTypes.value
+    }
+    if (maxAgents.value > 0) {
+      prepareParams.max_agents = maxAgents.value
     }
     const res = await prepareSimulation(prepareParams)
     
