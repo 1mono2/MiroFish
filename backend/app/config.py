@@ -35,18 +35,28 @@ class Config:
     # Zep配置
     ZEP_API_KEY = os.environ.get('ZEP_API_KEY')
     
+    # 永続データのベースディレクトリ（Render の Persistent Disk などを env var で指定可能）
+    _default_upload = os.path.join(os.path.dirname(__file__), '../uploads')
+    UPLOAD_FOLDER = os.environ.get('UPLOAD_FOLDER') or _default_upload
+
+    # ログディレクトリ（logger.py でも参照）
+    _default_log = os.path.join(os.path.dirname(__file__), '../../logs')
+    LOG_DIR = os.environ.get('LOG_DIR') or _default_log
+
     # 文件上传配置
     MAX_CONTENT_LENGTH = 50 * 1024 * 1024  # 50MB
-    UPLOAD_FOLDER = os.path.join(os.path.dirname(__file__), '../uploads')
     ALLOWED_EXTENSIONS = {'pdf', 'md', 'txt', 'markdown'}
-    
+
     # 文本处理配置
     DEFAULT_CHUNK_SIZE = 500  # 默认切块大小
     DEFAULT_CHUNK_OVERLAP = 50  # 默认重叠大小
-    
+
     # OASIS模拟配置
     OASIS_DEFAULT_MAX_ROUNDS = int(os.environ.get('OASIS_DEFAULT_MAX_ROUNDS', '10'))
-    OASIS_SIMULATION_DATA_DIR = os.path.join(os.path.dirname(__file__), '../uploads/simulations')
+    OASIS_SIMULATION_DATA_DIR = os.environ.get('OASIS_SIMULATION_DATA_DIR') or os.path.join(UPLOAD_FOLDER, 'simulations')
+
+    # タスク状態の永続化ディレクトリ
+    TASKS_DIR = os.environ.get('TASKS_DIR') or os.path.join(UPLOAD_FOLDER, 'tasks')
     
     # OASIS平台可用动作配置
     OASIS_TWITTER_ACTIONS = [

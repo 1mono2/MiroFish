@@ -16,3 +16,12 @@ services:
         generateValue: true
       - key: FLASK_DEBUG
         value: "false"
+      # Persistent Disk を使う場合は以下をマウントパスに合わせて設定する
+      # - key: UPLOAD_FOLDER
+      #   value: /data/uploads
+      # - key: LOG_DIR
+      #   value: /data/logs
+      # - key: OASIS_SIMULATION_DATA_DIR
+      #   value: /data/uploads/simulations
+      # - key: TASKS_DIR
+      #   value: /data/uploads/tasks

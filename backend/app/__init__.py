@@ -62,6 +62,10 @@ def create_app(config_class=Config):
         logger.debug(f"响应: {response.status_code}")
         return response
     
+    # TaskManager の永続化ディレクトリを初期化（起動時にディスクから復元）
+    from .models.task import TaskManager
+    TaskManager().init_storage(config_class.TASKS_DIR)
+
     # 注册蓝图
     from .api import graph_bp, simulation_bp, report_bp
     app.register_blueprint(graph_bp, url_prefix='/api/graph')
