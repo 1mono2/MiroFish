@@ -310,20 +310,22 @@ class SimulationRunner:
     def start_simulation(
         cls,
         simulation_id: str,
-        platform: str = "parallel",  # twitter / reddit / parallel
+        platform: str = "twitter",  # twitter / reddit
         max_rounds: int = None,  # 最大模拟轮数（可选，用于截断过长的模拟）
         enable_graph_memory_update: bool = False,  # 是否将活动更新到Zep图谱
-        graph_id: str = None  # Zep图谱ID（启用图谱更新时必需）
+        graph_id: str = None,  # Zep图谱ID（启用图谱更新时必需）
+        wait_for_commands: bool = False,  # 模拟完成后是否保持环境等待Interview命令
     ) -> SimulationRunState:
         """
         启动模拟
         
         Args:
             simulation_id: 模拟ID
-            platform: 运行平台 (twitter/reddit/parallel)
+            platform: 运行平台 (twitter/reddit)
             max_rounds: 最大模拟轮数（可选，用于截断过长的模拟）
             enable_graph_memory_update: 是否将Agent活动动态更新到Zep图谱
             graph_id: Zep图谱ID（启用图谱更新时必需）
+            wait_for_commands: 模拟完成后是否保持环境等待Interview命令
             
         Returns:
             SimulationRunState
@@ -389,9 +391,7 @@ class SimulationRunner:
             script_name = "run_reddit_simulation.py"
             state.reddit_running = True
         else:
-            script_name = "run_parallel_simulation.py"
-            state.twitter_running = True
-            state.reddit_running = True
+            raise ValueError(f"不支持的平台: {platform}（当前仅支持 twitter / reddit）")
         
         script_path = os.path.join(cls.SCRIPTS_DIR, script_name)
         
@@ -419,6 +419,10 @@ class SimulationRunner:
             # 如果指定了最大轮数，添加到命令行参数
             if max_rounds is not None and max_rounds > 0:
                 cmd.extend(["--max-rounds", str(max_rounds)])
+
+            # 默认关闭等待命令模式，避免模拟结束后长期占用内存导致 OOM
+            if not wait_for_commands:
+                cmd.append("--no-wait")
             
             # 创建主日志文件，避免 stdout/stderr 管道缓冲区满导致进程阻塞
             main_log_path = os.path.join(sim_dir, "simulation.log")

@@ -578,7 +578,7 @@ class RedditSimulationRunner:
             agent_graph=self.agent_graph,
             platform=oasis.DefaultPlatformType.REDDIT,
             database_path=db_path,
-            semaphore=30,  # 限制最大并发 LLM 请求数，防止 API 过载
+            semaphore=8,  # 限制最大并发 LLM 请求数，降低内存峰值
         )
         
         await self.env.reset()
@@ -766,4 +766,3 @@ if __name__ == "__main__":
         pass
     finally:
         print("模拟进程已退出")
-

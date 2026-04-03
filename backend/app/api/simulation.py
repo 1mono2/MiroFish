@@ -1462,9 +1462,10 @@ def start_simulation():
     请求（JSON）：
         {
             "simulation_id": "sim_xxxx",          // 必填，模拟ID
-            "platform": "parallel",                // 可选: twitter / reddit / parallel (默认)
+            "platform": "twitter",                 // 可选: twitter / reddit (默认 twitter)
             "max_rounds": 100,                     // 可选: 最大模拟轮数，用于截断过长的模拟
             "enable_graph_memory_update": false,   // 可选: 是否将Agent活动动态更新到Zep图谱记忆
+            "wait_for_commands": false,            // 可选: 是否在模拟完成后保持环境等待Interview命令（默认false）
             "force": false                         // 可选: 强制重新开始（会停止运行中的模拟并清理日志）
         }
 
@@ -1505,9 +1506,10 @@ def start_simulation():
                 "error": t('api.requireSimulationId')
             }), 400
 
-        platform = data.get('platform', 'parallel')
+        platform = data.get('platform', 'twitter')
         max_rounds = data.get('max_rounds')  # 可选：最大模拟轮数
         enable_graph_memory_update = data.get('enable_graph_memory_update', False)  # 可选：是否启用图谱记忆更新
+        wait_for_commands = data.get('wait_for_commands', False)  # 默认关闭等待模式，避免长驻内存
         force = data.get('force', False)  # 可选：强制重新开始
 
         # 验证 max_rounds 参数
@@ -1525,10 +1527,10 @@ def start_simulation():
                     "error": t('api.maxRoundsInvalid')
                 }), 400
 
-        if platform not in ['twitter', 'reddit', 'parallel']:
+        if platform not in ['twitter', 'reddit']:
             return jsonify({
                 "success": False,
-                "error": t('api.invalidPlatform', platform=platform)
+                "error": t('api.invalidPlatform', platform=platform) + "（当前仅支持 twitter / reddit，已禁用 parallel 以降低内存占用）"
             }), 400
 
         # 检查模拟是否已准备好
@@ -1612,7 +1614,8 @@ def start_simulation():
             platform=platform,
             max_rounds=max_rounds,
             enable_graph_memory_update=enable_graph_memory_update,
-            graph_id=graph_id
+            graph_id=graph_id,
+            wait_for_commands=wait_for_commands
         )
         
         # 更新模拟状态
@@ -1623,6 +1626,7 @@ def start_simulation():
         if max_rounds:
             response_data['max_rounds_applied'] = max_rounds
         response_data['graph_memory_update_enabled'] = enable_graph_memory_update
+        response_data['wait_for_commands'] = wait_for_commands
         response_data['force_restarted'] = force_restarted
         if enable_graph_memory_update:
             response_data['graph_id'] = graph_id
