@@ -23,8 +23,9 @@ def _ensure_utf8_stdout():
             sys.stderr.reconfigure(encoding='utf-8', errors='replace')
 
 
-# 日志目录
-LOG_DIR = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'logs')
+# 日志目录（LOG_DIR 環境変数で上書き可能）
+_default_log_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'logs')
+LOG_DIR = os.environ.get('LOG_DIR') or _default_log_dir
 
 
 def setup_logger(name: str = 'mirofish', level: int = logging.DEBUG) -> logging.Logger:

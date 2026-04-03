@@ -235,7 +235,8 @@ class SimulationManager:
         defined_entity_types: Optional[List[str]] = None,
         use_llm_for_profiles: bool = True,
         progress_callback: Optional[callable] = None,
-        parallel_profile_count: int = 3
+        parallel_profile_count: int = 3,
+        max_agents: Optional[int] = None
     ) -> SimulationState:
         """
         准备模拟环境（全程自动化）
@@ -284,9 +285,20 @@ class SimulationManager:
                 enrich_with_edges=True
             )
             
+            # max_agents が指定されている場合はランダムに上限まで絞る
+            if max_agents and max_agents > 0 and filtered.filtered_count > max_agents:
+                import random
+                sampled = random.sample(filtered.entities, max_agents)
+                filtered.entities = sampled
+                filtered.filtered_count = max_agents
+                filtered.entity_types = {
+                    e.get_entity_type() for e in sampled if e.get_entity_type()
+                }
+                logger.info(f"max_agents={max_agents} で絞り込み: {filtered.filtered_count} 体")
+
             state.entities_count = filtered.filtered_count
             state.entity_types = list(filtered.entity_types)
-            
+
             if progress_callback:
                 progress_callback(
                     "reading", 100,
@@ -294,13 +306,13 @@ class SimulationManager:
                     current=filtered.filtered_count,
                     total=filtered.filtered_count
                 )
-            
+
             if filtered.filtered_count == 0:
                 state.status = SimulationStatus.FAILED
-                state.error = "没有找到符合条件的实体，请检查图谱是否正确构建"
+                state.error = "没有找到符合条件的实体，请检查图谱是否正确構築"
                 self._save_simulation_state(state)
                 return state
-            
+
             # ========== 阶段2: 生成Agent Profile ==========
             total_entities = len(filtered.entities)
             

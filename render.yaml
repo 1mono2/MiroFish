@@ -1,0 +1,30 @@
+services:
+  - type: web
+    name: mirofish
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    disk:
+      name: mirofish-data
+      mountPath: /data
+      sizeGB: 10
+    envVars:
+      - key: LLM_API_KEY
+        sync: false
+      - key: LLM_BASE_URL
+        sync: false
+      - key: LLM_MODEL_NAME
+        sync: false
+      - key: ZEP_API_KEY
+        sync: false
+      - key: SECRET_KEY
+        generateValue: true
+      - key: FLASK_DEBUG
+        value: "false"
+      - key: UPLOAD_FOLDER
+        value: /data/uploads
+      - key: LOG_DIR
+        value: /data/logs
+      - key: OASIS_SIMULATION_DATA_DIR
+        value: /data/uploads/simulations
+      - key: TASKS_DIR
+        value: /data/uploads/tasks

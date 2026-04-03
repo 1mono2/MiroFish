@@ -1,6 +1,115 @@
 <template>
   <div class="env-setup-panel">
     <div class="scroll-container">
+
+      <!-- 事前設定パネル -->
+      <div v-if="!configReady" class="pre-config-card">
+        <div class="pre-config-header">
+          <span class="pre-config-title">シミュレーション設定</span>
+          <span class="pre-config-desc">エージェントとラウンドを設定してから準備を開始してください</span>
+        </div>
+
+        <!-- エンティティタイプ選択 -->
+        <div class="pre-config-section">
+          <div class="pre-config-label">
+            エンティティタイプ
+            <span class="pre-config-hint">（少ないほど高速・低コスト）</span>
+          </div>
+          <div v-if="fetchingEntityTypes" class="pre-config-loading">グラフから読み込み中...</div>
+          <div v-else class="entity-type-grid">
+            <label
+              v-for="type in availableEntityTypes"
+              :key="type"
+              class="entity-type-item"
+              :class="{ checked: selectedEntityTypes.includes(type) }"
+            >
+              <input type="checkbox" :value="type" v-model="selectedEntityTypes" />
+              <span class="et-name">{{ type }}</span>
+              <span class="et-count">{{ entityTypeCounts[type] }}体</span>
+            </label>
+          </div>
+          <div v-if="!fetchingEntityTypes && estimatedAgentCount > 0" class="estimate-row">
+            <span class="estimate-label">対象エンティティ数</span>
+            <span class="estimate-value" :class="{ 'estimate-warn': estimatedAgentCount > 40 }">
+              {{ estimatedAgentCount }} 体
+            </span>
+            <span v-if="estimatedAgentCount > 40" class="estimate-tip">上限設定を推奨</span>
+          </div>
+        </div>
+
+        <!-- 最大エージェント数 -->
+        <div class="pre-config-section">
+          <div class="pre-config-label">
+            最大エージェント数
+            <span class="pre-config-hint">（推奨: 20〜30体）</span>
+          </div>
+          <div class="rounds-inline">
+            <input
+              type="range"
+              v-model.number="maxAgents"
+              min="5"
+              max="100"
+              step="5"
+              class="minimal-slider"
+              :style="{ '--percent': ((maxAgents - 5) / (100 - 5)) * 100 + '%' }"
+            />
+            <div class="rounds-inline-info">
+              <span class="rounds-inline-value">{{ maxAgents }} 体</span>
+              <span class="rounds-inline-est" :class="{ 'estimate-warn': maxAgents > 40 }">
+                {{ maxAgents > 40 ? '多め・時間・コスト増' : maxAgents <= 20 ? '軽量・高速' : '推奨範囲内' }}
+              </span>
+            </div>
+          </div>
+          <div class="pre-range-marks">
+            <span>5</span>
+            <span class="mark-recommend" :class="{ active: maxAgents === 20 }" @click="maxAgents = 20">20 (推奨)</span>
+            <span>100</span>
+          </div>
+        </div>
+
+        <!-- ラウンド数 -->
+        <div class="pre-config-section">
+          <div class="pre-config-label">
+            ラウンド数
+            <span class="pre-config-hint">（推奨: 20〜40）</span>
+          </div>
+          <div class="rounds-inline">
+            <input
+              type="range"
+              v-model.number="customMaxRounds"
+              min="5"
+              max="96"
+              step="5"
+              class="minimal-slider"
+              :style="{ '--percent': ((customMaxRounds - 5) / (96 - 5)) * 100 + '%' }"
+            />
+            <div class="rounds-inline-info">
+              <span class="rounds-inline-value">{{ customMaxRounds }} ラウンド</span>
+              <span v-if="estimatedAgentCount > 0" class="rounds-inline-est">
+                目安 {{ Math.round(estimatedAgentCount * customMaxRounds * 0.008) }}〜{{ Math.round(estimatedAgentCount * customMaxRounds * 0.015) }} 分
+              </span>
+            </div>
+          </div>
+          <div class="pre-range-marks">
+            <span>5</span>
+            <span
+              class="mark-recommend"
+              :class="{ active: customMaxRounds === 20 }"
+              @click="customMaxRounds = 20"
+            >20 (推奨)</span>
+            <span>96</span>
+          </div>
+        </div>
+
+        <button
+          class="action-btn primary pre-config-start-btn"
+          :disabled="fetchingEntityTypes || selectedEntityTypes.length === 0"
+          @click="startWithConfig"
+        >
+          準備を開始 ➝
+        </button>
+      </div>
+
       <!-- Step 01: 模拟实例 -->
       <div class="step-card" :class="{ 'active': phase === 0, 'completed': phase > 0 }">
         <div class="card-header">
@@ -639,7 +748,8 @@ import {
   getPrepareStatus,
   getSimulationProfilesRealtime,
   getSimulationConfig,
-  getSimulationConfigRealtime
+  getSimulationConfigRealtime,
+  getGraphEntities
 } from '../api/simulation'
 
 const { t } = useI18n()
@@ -672,8 +782,21 @@ let lastLoggedProfileCount = 0
 let lastLoggedConfigStage = ''
 
 // 模拟轮数配置
-const useCustomRounds = ref(false) // 默认使用自动配置轮数
-const customMaxRounds = ref(40)   // 默认推荐40轮
+const useCustomRounds = ref(true)  // デフォルトでカスタムモード
+const customMaxRounds = ref(20)    // デフォルト20ラウンド（低め）
+
+// 事前設定
+const configReady = ref(false)
+const availableEntityTypes = ref([])
+const entityTypeCounts = ref({})
+const selectedEntityTypes = ref([])
+const fetchingEntityTypes = ref(false)
+
+const maxAgents = ref(20)  // デフォルト20体
+
+const estimatedAgentCount = computed(() => {
+  return selectedEntityTypes.value.reduce((sum, type) => sum + (entityTypeCounts.value[type] || 0), 0)
+})
 
 // Watch stage to update phase
 watch(currentStage, (newStage) => {
@@ -768,6 +891,46 @@ const selectProfile = (profile) => {
   selectedProfile.value = profile
 }
 
+// グラフからエンティティタイプを取得して事前設定UIに表示
+const fetchEntityTypes = async () => {
+  const graphId = props.projectData?.graph_id
+  if (!graphId) {
+    configReady.value = true
+    startPrepareSimulation()
+    return
+  }
+  fetchingEntityTypes.value = true
+  try {
+    const res = await getGraphEntities(graphId)
+    if (res.success) {
+      const entities = res.data?.entities || []
+      const counts = {}
+      entities.forEach(e => {
+        const type = (e.labels || []).find(l => l !== 'Entity' && l !== 'Node')
+        if (type) counts[type] = (counts[type] || 0) + 1
+      })
+      entityTypeCounts.value = counts
+      availableEntityTypes.value = Object.keys(counts).sort((a, b) => counts[b] - counts[a])
+      // デフォルトは上位2タイプを選択
+      selectedEntityTypes.value = availableEntityTypes.value.slice(0, 2)
+    } else {
+      configReady.value = true
+      startPrepareSimulation()
+    }
+  } catch {
+    configReady.value = true
+    startPrepareSimulation()
+  } finally {
+    fetchingEntityTypes.value = false
+  }
+}
+
+const startWithConfig = () => {
+  if (selectedEntityTypes.value.length === 0) return
+  configReady.value = true
+  startPrepareSimulation()
+}
+
 // 自动开始准备模拟
 const startPrepareSimulation = async () => {
   if (!props.simulationId) {
@@ -783,11 +946,18 @@ const startPrepareSimulation = async () => {
   emit('update-status', 'processing')
   
   try {
-    const res = await prepareSimulation({
+    const prepareParams = {
       simulation_id: props.simulationId,
       use_llm_for_profiles: true,
       parallel_profile_count: 5
-    })
+    }
+    if (selectedEntityTypes.value.length > 0) {
+      prepareParams.entity_types = selectedEntityTypes.value
+    }
+    if (maxAgents.value > 0) {
+      prepareParams.max_agents = maxAgents.value
+    }
+    const res = await prepareSimulation(prepareParams)
     
     if (res.success && res.data) {
       if (res.data.already_prepared) {
@@ -1069,10 +1239,21 @@ watch(() => props.systemLogs?.length, () => {
 })
 
 onMounted(() => {
-  // 自动开始准备流程
-  if (props.simulationId) {
-    addLog(t('log.step2Init'))
-    startPrepareSimulation()
+  if (!props.simulationId) return
+  addLog(t('log.step2Init'))
+
+  // projectData は親が非同期で取得するため、graph_id が揃ってから実行
+  const graphId = props.projectData?.graph_id
+  if (graphId) {
+    fetchEntityTypes()
+  } else {
+    // projectData がまだ来ていない場合は watch で待つ
+    const stop = watch(() => props.projectData?.graph_id, (id) => {
+      if (id) {
+        stop()
+        fetchEntityTypes()
+      }
+    }, { immediate: false })
   }
 })
 
@@ -2273,6 +2454,193 @@ onUnmounted(() => {
   color: #555;
   line-height: 1.5;
   margin: 0;
+}
+
+/* 事前設定パネル */
+.pre-config-card {
+  background: #FFF;
+  border-radius: 8px;
+  padding: 24px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.04);
+  border: 1px solid #FF5722;
+  margin-bottom: 16px;
+}
+
+.pre-config-header {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-bottom: 20px;
+}
+
+.pre-config-title {
+  font-weight: 700;
+  font-size: 15px;
+  color: #000;
+}
+
+.pre-config-desc {
+  font-size: 12px;
+  color: #666;
+}
+
+.pre-config-section {
+  margin-bottom: 20px;
+}
+
+.pre-config-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 10px;
+}
+
+.pre-config-hint {
+  font-weight: 400;
+  color: #999;
+  margin-left: 4px;
+}
+
+.pre-config-loading {
+  font-size: 12px;
+  color: #999;
+  padding: 8px 0;
+}
+
+.entity-type-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.entity-type-item {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  border-radius: 6px;
+  border: 1px solid #E0E0E0;
+  background: #F9F9F9;
+  cursor: pointer;
+  transition: all 0.15s ease;
+  user-select: none;
+}
+
+.entity-type-item.checked {
+  border-color: #FF5722;
+  background: #FFF3F0;
+}
+
+.entity-type-item input[type="checkbox"] {
+  display: none;
+}
+
+.et-name {
+  font-size: 12px;
+  font-weight: 500;
+  color: #333;
+}
+
+.et-count {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 11px;
+  color: #999;
+  background: #EEEEEE;
+  padding: 1px 5px;
+  border-radius: 3px;
+}
+
+.entity-type-item.checked .et-count {
+  background: #FFD5C8;
+  color: #BF360C;
+}
+
+.estimate-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  background: #F5F5F5;
+  border-radius: 6px;
+  font-size: 12px;
+}
+
+.estimate-label {
+  color: #666;
+}
+
+.estimate-value {
+  font-family: 'JetBrains Mono', monospace;
+  font-weight: 700;
+  font-size: 14px;
+  color: #000;
+}
+
+.estimate-warn {
+  color: #E53935;
+}
+
+.estimate-tip {
+  font-size: 11px;
+  color: #E53935;
+  background: #FFEBEE;
+  padding: 2px 6px;
+  border-radius: 3px;
+}
+
+.estimate-ok {
+  font-size: 11px;
+  color: #2E7D32;
+  background: #E8F5E9;
+  padding: 2px 6px;
+  border-radius: 3px;
+}
+
+.rounds-inline {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  margin-bottom: 6px;
+}
+
+.rounds-inline .minimal-slider {
+  flex: 1;
+}
+
+.rounds-inline-info {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  min-width: 100px;
+}
+
+.rounds-inline-value {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 16px;
+  font-weight: 700;
+  color: #000;
+}
+
+.rounds-inline-est {
+  font-size: 10px;
+  color: #999;
+  margin-top: 2px;
+}
+
+.pre-range-marks {
+  display: flex;
+  justify-content: space-between;
+  position: relative;
+  font-size: 10px;
+  color: #999;
+  padding: 0 2px;
+}
+
+.pre-config-start-btn {
+  width: 100%;
+  justify-content: center;
+  margin-top: 4px;
 }
 
 /* 模拟轮数配置样式 */

@@ -467,6 +467,9 @@ def prepare_simulation():
         entity_types_list = data.get('entity_types')
         use_llm_for_profiles = data.get('use_llm_for_profiles', True)
         parallel_profile_count = data.get('parallel_profile_count', 5)
+        max_agents = data.get('max_agents')  # 可选：最大Agent数
+        if max_agents is not None:
+            max_agents = int(max_agents)
         
         # ========== 同步获取实体数量（在后台任务启动前） ==========
         # 这样前端在调用prepare后立即就能获取到预期Agent总数
@@ -479,10 +482,13 @@ def prepare_simulation():
                 defined_entity_types=entity_types_list,
                 enrich_with_edges=False  # 不获取边信息，加快速度
             )
-            # 保存实体数量到状态（供前端立即获取）
-            state.entities_count = filtered_preview.filtered_count
+            # max_agents が指定されている場合はプレビュー数も上限に揃える
+            preview_count = filtered_preview.filtered_count
+            if max_agents and max_agents > 0 and preview_count > max_agents:
+                preview_count = max_agents
+            state.entities_count = preview_count
             state.entity_types = list(filtered_preview.entity_types)
-            logger.info(f"预期实体数量: {filtered_preview.filtered_count}, 类型: {filtered_preview.entity_types}")
+            logger.info(f"预期实体数量: {preview_count}, 类型: {filtered_preview.entity_types}")
         except Exception as e:
             logger.warning(f"同步获取实体数量失败（将在后台任务中重试）: {e}")
             # 失败不影响后续流程，后台任务会重新获取
@@ -587,7 +593,8 @@ def prepare_simulation():
                     defined_entity_types=entity_types_list,
                     use_llm_for_profiles=use_llm_for_profiles,
                     progress_callback=progress_callback,
-                    parallel_profile_count=parallel_profile_count
+                    parallel_profile_count=parallel_profile_count,
+                    max_agents=max_agents
                 )
                 
                 # 任务完成

@@ -185,3 +185,11 @@ export const getSimulationHistory = (limit = 20) => {
   return service.get('/api/simulation/history', { params: { limit } })
 }
 
+/**
+ * グラフエンティティ一覧取得（エンティティタイプ選択用）
+ * @param {string} graphId
+ */
+export const getGraphEntities = (graphId) => {
+  return service.get(`/api/simulation/entities/${graphId}`, { params: { enrich: false } })
+}
+

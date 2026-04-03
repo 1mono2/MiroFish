@@ -38,8 +38,8 @@
               :class="{ available: project.project_id, unavailable: !project.project_id }"
               :title="$t('history.graphBuild')"
             >◇</span>
-            <span 
-              class="status-icon available" 
+            <span
+              class="status-icon available"
               :title="$t('history.envSetup')"
             >◈</span>
             <span 
