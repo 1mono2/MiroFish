@@ -7,7 +7,7 @@
       <!-- 中间步骤指示器 -->
       <div class="nav-center">
         <div class="step-badge">STEP 01</div>
-        <div class="step-name">グラフ構築</div>
+        <div class="step-name">{{ $t('process.stepName') }}</div>
       </div>
 
       <div class="nav-status">
@@ -23,20 +23,20 @@
         <div class="panel-header">
           <div class="header-left">
             <span class="header-deco">◆</span>
-            <span class="header-title">リアルタイム知識グラフ</span>
+            <span class="header-title">{{ $t('process.realtimeGraph') }}</span>
           </div>
           <div class="header-right">
             <template v-if="graphData">
-              <span class="stat-item">{{ graphData.node_count || graphData.nodes?.length || 0 }} ノード</span>
+              <span class="stat-item">{{ graphData.node_count || graphData.nodes?.length || 0 }} {{ $t('process.nodesUnit') }}</span>
               <span class="stat-divider">|</span>
               <span class="stat-item">{{ graphData.edge_count || graphData.edges?.length || 0 }} 関係</span>
               <span class="stat-divider">|</span>
             </template>
             <div class="action-buttons">
-                <button class="action-btn" @click="refreshGraph" :disabled="graphLoading" title="グラフを更新">
+                <button class="action-btn" @click="refreshGraph" :disabled="graphLoading" :title="$t('process.refreshGraph')">
                   <span class="icon-refresh" :class="{ 'spinning': graphLoading }">↻</span>
                 </button>
-                <button class="action-btn" @click="toggleFullScreen" :title="isFullScreen ? '全画面解除' : '全画面表示'">
+                <button class="action-btn" @click="toggleFullScreen" :title="isFullScreen ? $t('process.exitFullscreen') : $t('process.enterFullscreen')">
                   <span class="icon-fullscreen">{{ isFullScreen ? '↙' : '↗' }}</span>
                 </button>
             </div>
@@ -50,7 +50,7 @@
             <!-- 构建中提示 -->
             <div v-if="currentPhase === 1" class="graph-building-hint">
               <span class="building-dot"></span>
-              リアルタイム更新中...
+              {{ $t('process.realtimeUpdating') }}
             </div>
             
             <!-- 节点/边详情面板 -->
@@ -414,12 +414,14 @@
 <script setup>
 import { ref, computed, onMounted, onUnmounted, watch, nextTick } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { useI18n } from 'vue-i18n'
 import { generateOntology, getProject, buildGraph, getTaskStatus, getGraphData } from '../api/graph'
 import { getPendingUpload, clearPendingUpload } from '../store/pendingUpload'
 import * as d3 from 'd3'
 
 const route = useRoute()
 const router = useRouter()
+const { t } = useI18n()
 
 // 当前项目ID（可能从'new'变为实际ID）
 const currentProjectId = ref(route.params.projectId)
@@ -451,11 +453,11 @@ const statusClass = computed(() => {
 })
 
 const statusText = computed(() => {
-  if (error.value) return '構築失敗'
-  if (currentPhase.value >= 2) return '構築完了'
-  if (currentPhase.value === 1) return 'グラフ構築中'
-  if (currentPhase.value === 0) return 'オントロジー生成中'
-  return '初期化中'
+  if (error.value) return t('process.buildFailed')
+  if (currentPhase.value >= 2) return t('process.buildCompleted')
+  if (currentPhase.value === 1) return t('process.graphBuilding')
+  if (currentPhase.value === 0) return t('process.ontologyGenerating')
+  return t('process.initializing')
 })
 
 const entityTypes = computed(() => {
@@ -482,7 +484,7 @@ const goHome = () => {
 
 const goToNextStep = () => {
   // TODO: 进入环境搭建步骤
-  alert('環境セットアップ機能は開発中です...')
+  alert(t('process.envSetupInDevelopment'))
 }
 
 const toggleFullScreen = () => {
@@ -540,14 +542,14 @@ const getPhaseStatusClass = (phase) => {
 }
 
 const getPhaseStatusText = (phase) => {
-  if (currentPhase.value > phase) return '完了'
+  if (currentPhase.value > phase) return t('process.statusDone')
   if (currentPhase.value === phase) {
     if (phase === 1 && buildProgress.value) {
       return `${buildProgress.value.progress}%`
     }
-    return '進行中'
+    return t('process.statusInProgress')
   }
-  return '待機中'
+  return t('process.statusPending')
 }
 
 // 初始化 - 处理新建项目或加载已有项目
@@ -569,7 +571,7 @@ const handleNewProject = async () => {
   const pending = getPendingUpload()
   
   if (!pending.isPending || pending.files.length === 0) {
-    error.value = 'アップロード待ちのファイルがありません。トップページに戻って再操作してください'
+    error.value = t('process.errorNoPendingUpload')
     loading.value = false
     return
   }
@@ -577,7 +579,7 @@ const handleNewProject = async () => {
   try {
     loading.value = true
     currentPhase.value = 0 // 本体生成阶段
-    ontologyProgress.value = { message: 'ファイルをアップロードしてドキュメントを解析中...' }
+    ontologyProgress.value = { message: t('process.analyzingUploadedFiles') }
     
     // 构建 FormData
     const formDataObj = new FormData()
@@ -608,11 +610,11 @@ const handleNewProject = async () => {
       // 自动开始图谱构建
       await startBuildGraph()
     } else {
-      error.value = response.error || 'オントロジー生成失敗'
+      error.value = response.error || t('process.errorOntologyGenerationFailed')
     }
   } catch (err) {
     console.error('Handle new project error:', err)
-    error.value = 'プロジェクト初期化失敗: ' + (err.message || '不明なエラー')
+    error.value = `${t('process.errorProjectInitFailed')}: ${err.message || t('common.unknownError')}`
   } finally {
     loading.value = false
   }
@@ -645,11 +647,11 @@ const loadProject = async () => {
         await loadGraph(response.data.graph_id)
       }
     } else {
-      error.value = response.error || 'プロジェクト読み込み失敗'
+      error.value = response.error || t('process.errorProjectLoadFailed')
     }
   } catch (err) {
     console.error('Load project error:', err)
-    error.value = 'プロジェクト読み込み失敗: ' + (err.message || '不明なエラー')
+    error.value = `${t('process.errorProjectLoadFailed')}: ${err.message || t('common.unknownError')}`
   } finally {
     loading.value = false
   }
@@ -668,7 +670,7 @@ const updatePhaseByStatus = (status) => {
       currentPhase.value = 2
       break
     case 'failed':
-      error.value = projectData.value?.error || '処理失敗'
+      error.value = projectData.value?.error || t('process.errorProcessingFailed')
       break
   }
 }
@@ -680,13 +682,13 @@ const startBuildGraph = async () => {
     // 设置初始进度
     buildProgress.value = {
       progress: 0,
-      message: 'グラフ構築を起動中...'
+      message: t('process.startingGraphBuild')
     }
     
     const response = await buildGraph({ project_id: currentProjectId.value })
     
     if (response.success) {
-      buildProgress.value.message = 'グラフ構築タスクを起動しました...'
+      buildProgress.value.message = t('process.graphBuildTaskStarted')
       
       // 保存 task_id 用于轮询
       const taskId = response.data.task_id
@@ -697,12 +699,12 @@ const startBuildGraph = async () => {
       // 启动任务状态轮询
       startPollingTask(taskId)
     } else {
-      error.value = response.error || 'グラフ構築起動失敗'
+      error.value = response.error || t('process.errorGraphBuildStartFailed')
       buildProgress.value = null
     }
   } catch (err) {
     console.error('Build graph error:', err)
-    error.value = 'グラフ構築起動失敗: ' + (err.message || '不明なエラー')
+    error.value = `${t('process.errorGraphBuildStartFailed')}: ${err.message || t('common.unknownError')}`
     buildProgress.value = null
   }
 }
@@ -791,7 +793,7 @@ const pollTaskStatus = async (taskId) => {
       // 更新进度显示
       buildProgress.value = {
         progress: task.progress || 0,
-        message: task.message || '処理中...'
+        message: task.message || t('process.processing')
       }
       
       console.log('Task status:', task.status, 'Progress:', task.progress)
@@ -806,7 +808,7 @@ const pollTaskStatus = async (taskId) => {
         // 更新进度显示为完成状态
         buildProgress.value = {
           progress: 100,
-          message: '構築完了、グラフを読み込み中...'
+          message: t('process.buildDoneLoadingGraph')
         }
         
         // 重新加载项目数据获取 graph_id
@@ -827,7 +829,7 @@ const pollTaskStatus = async (taskId) => {
       } else if (task.status === 'failed') {
         stopPolling()
         stopGraphPolling()
-        error.value = 'グラフ構築失敗: ' + (task.error || '不明なエラー')
+        error.value = `${t('process.errorGraphBuildFailed')}: ${task.error || t('common.unknownError')}`
         buildProgress.value = null
       }
     }
@@ -905,7 +907,7 @@ const renderGraph = () => {
       .attr('y', height / 2)
       .attr('text-anchor', 'middle')
       .attr('fill', '#999')
-      .text('グラフデータ待機中...')
+      .text(t('process.waitingGraphData'))
     return
   }
   
@@ -917,7 +919,7 @@ const renderGraph = () => {
   
   const nodes = nodesData.map(n => ({
     id: n.uuid,
-    name: n.name || '名称なし',
+    name: n.name || t('process.unnamed'),
     type: n.labels?.find(l => l !== 'Entity' && l !== 'Node') || 'Entity',
     rawData: n // 保存原始数据
   }))
@@ -933,8 +935,8 @@ const renderGraph = () => {
       type: e.fact_type || e.name || 'RELATED_TO',
       rawData: {
         ...e,
-        source_name: nodeMap[e.source_node_uuid]?.name || '不明',
-        target_name: nodeMap[e.target_node_uuid]?.name || '不明'
+        source_name: nodeMap[e.source_node_uuid]?.name || t('common.unknown'),
+        target_name: nodeMap[e.target_node_uuid]?.name || t('common.unknown')
       }
     }))
   

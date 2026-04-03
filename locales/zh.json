@@ -75,7 +75,13 @@
     "layoutGraph": "图谱",
     "layoutSplit": "双栏",
     "layoutWorkbench": "工作台",
-    "stepNames": ["图谱构建", "环境搭建", "开始模拟", "报告生成", "深度互动"]
+    "stepNames": [
+      "图谱构建",
+      "环境搭建",
+      "开始模拟",
+      "报告生成",
+      "深度互动"
+    ]
   },
   "step1": {
     "ontologyGeneration": "本体生成",
@@ -174,7 +180,25 @@
     "genderOther": "其他",
     "yearsOld": "岁",
     "initializing": "初始化",
-    "generating": "生成中"
+    "generating": "生成中",
+    "preConfigTitle": "模拟设置",
+    "preConfigDesc": "请先配置 Agent 和轮数，再开始准备流程",
+    "preConfigEntityTypes": "实体类型",
+    "preConfigEntityTypesHint": "（类型越少越快、成本越低）",
+    "preConfigLoadingGraph": "正在从图谱读取...",
+    "agentUnit": "体",
+    "preConfigTargetEntities": "目标实体数",
+    "preConfigRecommendCap": "建议设置上限",
+    "preConfigMaxAgents": "最大 Agent 数",
+    "preConfigMaxAgentsHint": "（推荐：20~30）",
+    "preConfigAgentsTooHigh": "负载较高 · 时间/成本增加",
+    "preConfigAgentsLightweight": "轻量 · 更快",
+    "preConfigAgentsRecommended": "在推荐范围内",
+    "recommended": "推荐",
+    "preConfigRounds": "轮数",
+    "preConfigRoundsHint": "（推荐：20~40）",
+    "preConfigEstimateTime": "预计 {min}~{max} 分钟",
+    "preConfigStart": "开始准备 ➝"
   },
   "step3": {
     "startGenerateReport": "开始生成结果报告",
@@ -661,5 +685,41 @@
     "llmSelectAgentFailed": "LLM选择Agent失败，使用默认选择: {error}",
     "generateInterviewQuestionsFailed": "生成采访问题失败: {error}",
     "generateInterviewSummaryFailed": "生成采访摘要失败: {error}"
+  },
+  "process": {
+    "stepName": "图谱构建",
+    "realtimeGraph": "实时知识图谱",
+    "nodesUnit": "节点",
+    "refreshGraph": "刷新图谱",
+    "enterFullscreen": "全屏显示",
+    "exitFullscreen": "退出全屏",
+    "realtimeUpdating": "实时更新中...",
+    "buildFailed": "构建失败",
+    "buildCompleted": "构建完成",
+    "graphBuilding": "图谱构建中",
+    "ontologyGenerating": "本体生成中",
+    "initializing": "初始化中",
+    "envSetupInDevelopment": "环境搭建功能开发中...",
+    "statusDone": "完成",
+    "statusInProgress": "进行中",
+    "statusPending": "等待中",
+    "errorNoPendingUpload": "没有待上传文件，请返回首页重新操作",
+    "analyzingUploadedFiles": "正在上传文件并解析文档...",
+    "errorOntologyGenerationFailed": "本体生成失败",
+    "errorProjectInitFailed": "项目初始化失败",
+    "errorProjectLoadFailed": "项目加载失败",
+    "errorProcessingFailed": "处理失败",
+    "startingGraphBuild": "正在启动图谱构建...",
+    "graphBuildTaskStarted": "图谱构建任务已启动...",
+    "errorGraphBuildStartFailed": "图谱构建启动失败",
+    "processing": "处理中...",
+    "buildDoneLoadingGraph": "构建完成，正在加载图谱...",
+    "errorGraphBuildFailed": "图谱构建失败",
+    "waitingGraphData": "等待图谱数据...",
+    "unnamed": "未命名",
+    "loadingGraphData": "图谱数据加载中...",
+    "waitingOntology": "等待本体生成",
+    "waitingOntologyHint": "生成完成后将自动开始图谱构建",
+    "graphBuildingHint": "数据即将显示..."
   }
 }
