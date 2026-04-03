@@ -204,11 +204,8 @@ class SimulationRunner:
     4. 支持暂停/停止/恢复操作
     """
     
-    # 运行状态存储目录
-    RUN_STATE_DIR = os.path.join(
-        os.path.dirname(__file__),
-        '../../uploads/simulations'
-    )
+    # 运行状态存储目录（Config と同じ経路に統一）
+    RUN_STATE_DIR = Config.OASIS_SIMULATION_DATA_DIR
     
     # 脚本目录
     SCRIPTS_DIR = os.path.join(
@@ -1765,4 +1762,3 @@ class SimulationRunner:
             results = results[:limit]
         
         return results
-
