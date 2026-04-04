@@ -1462,7 +1462,7 @@ def start_simulation():
     请求（JSON）：
         {
             "simulation_id": "sim_xxxx",          // 必填，模拟ID
-            "platform": "twitter",                 // 可选: twitter / reddit (默认 twitter)
+            "platform": "parallel",                // 可选: twitter / reddit / parallel (默认 parallel)
             "max_rounds": 100,                     // 可选: 最大模拟轮数，用于截断过长的模拟
             "enable_graph_memory_update": false,   // 可选: 是否将Agent活动动态更新到Zep图谱记忆
             "wait_for_commands": false,            // 可选: 是否在模拟完成后保持环境等待Interview命令（默认false）
@@ -1506,7 +1506,7 @@ def start_simulation():
                 "error": t('api.requireSimulationId')
             }), 400
 
-        platform = data.get('platform', 'twitter')
+        platform = data.get('platform', 'parallel')
         max_rounds = data.get('max_rounds')  # 可选：最大模拟轮数
         enable_graph_memory_update = data.get('enable_graph_memory_update', False)  # 可选：是否启用图谱记忆更新
         wait_for_commands = data.get('wait_for_commands', False)  # 默认关闭等待模式，避免长驻内存
@@ -1527,10 +1527,10 @@ def start_simulation():
                     "error": t('api.maxRoundsInvalid')
                 }), 400
 
-        if platform not in ['twitter', 'reddit']:
+        if platform not in ['twitter', 'reddit', 'parallel']:
             return jsonify({
                 "success": False,
-                "error": t('api.invalidPlatform', platform=platform) + "（当前仅支持 twitter / reddit，已禁用 parallel 以降低内存占用）"
+                "error": t('api.invalidPlatform', platform=platform)
             }), 400
 
         # 检查模拟是否已准备好

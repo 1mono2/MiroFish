@@ -310,7 +310,7 @@ class SimulationRunner:
     def start_simulation(
         cls,
         simulation_id: str,
-        platform: str = "twitter",  # twitter / reddit
+        platform: str = "parallel",  # twitter / reddit / parallel
         max_rounds: int = None,  # 最大模拟轮数（可选，用于截断过长的模拟）
         enable_graph_memory_update: bool = False,  # 是否将活动更新到Zep图谱
         graph_id: str = None,  # Zep图谱ID（启用图谱更新时必需）
@@ -321,7 +321,7 @@ class SimulationRunner:
         
         Args:
             simulation_id: 模拟ID
-            platform: 运行平台 (twitter/reddit)
+            platform: 运行平台 (twitter/reddit/parallel)
             max_rounds: 最大模拟轮数（可选，用于截断过长的模拟）
             enable_graph_memory_update: 是否将Agent活动动态更新到Zep图谱
             graph_id: Zep图谱ID（启用图谱更新时必需）
@@ -390,8 +390,12 @@ class SimulationRunner:
         elif platform == "reddit":
             script_name = "run_reddit_simulation.py"
             state.reddit_running = True
+        elif platform == "parallel":
+            script_name = "run_parallel_simulation.py"
+            state.twitter_running = True
+            state.reddit_running = True
         else:
-            raise ValueError(f"不支持的平台: {platform}（当前仅支持 twitter / reddit）")
+            raise ValueError(f"不支持的平台: {platform}")
         
         script_path = os.path.join(cls.SCRIPTS_DIR, script_name)
         
