@@ -12,6 +12,8 @@ import threading
 import subprocess
 import signal
 import atexit
+import gc
+import ctypes
 from typing import Dict, Any, List, Optional, Union
 from dataclasses import dataclass, field
 from datetime import datetime
@@ -25,6 +27,11 @@ from .zep_graph_memory_updater import ZepGraphMemoryManager
 from .simulation_ipc import SimulationIPCClient, CommandType, IPCResponse
 
 logger = get_logger('mirofish.simulation_runner')
+
+try:
+    import psutil
+except ImportError:  # pragma: no cover - psutil is available in production deps
+    psutil = None
 
 # 标记是否已注册清理函数
 _cleanup_registered = False
@@ -223,6 +230,78 @@ class SimulationRunner:
     
     # 图谱记忆更新配置
     _graph_memory_enabled: Dict[str, bool] = {}  # simulation_id -> enabled
+
+    @classmethod
+    def _log_memory_snapshot(cls, label: str, simulation_id: Optional[str] = None):
+        """Log RSS for the current process and tracked simulation child process."""
+        if psutil is None:
+            return
+
+        try:
+            current = psutil.Process(os.getpid())
+            rss_mb = current.memory_info().rss / (1024 * 1024)
+            msg = f"[memory] {label}: main_rss={rss_mb:.1f}MB"
+
+            if simulation_id:
+                child = cls._processes.get(simulation_id)
+                if child and child.poll() is None:
+                    try:
+                        child_proc = psutil.Process(child.pid)
+                        child_rss_mb = child_proc.memory_info().rss / (1024 * 1024)
+                        descendants = child_proc.children(recursive=True)
+                        descendants_rss_mb = sum(
+                            p.memory_info().rss for p in descendants if p.is_running()
+                        ) / (1024 * 1024)
+                        msg += (
+                            f", sim_pid={child.pid}, sim_rss={child_rss_mb:.1f}MB,"
+                            f" descendants_rss={descendants_rss_mb:.1f}MB"
+                        )
+                    except (psutil.Error, ProcessLookupError):
+                        msg += f", sim_pid={child.pid}, sim_rss=unavailable"
+
+            logger.info(msg)
+        except psutil.Error:
+            pass
+
+    @classmethod
+    def _release_python_memory(cls):
+        """Best-effort release of Python allocator memory after simulation cleanup."""
+        gc.collect()
+
+        if sys.platform.startswith('linux'):
+            try:
+                libc = ctypes.CDLL("libc.so.6")
+                malloc_trim = getattr(libc, "malloc_trim", None)
+                if malloc_trim:
+                    malloc_trim(0)
+            except Exception:
+                pass
+
+    @classmethod
+    def _cleanup_simulation_runtime(cls, simulation_id: str):
+        """Release in-memory references and file handles for a finished simulation."""
+        cls._log_memory_snapshot("before cleanup", simulation_id)
+
+        cls._processes.pop(simulation_id, None)
+        cls._action_queues.pop(simulation_id, None)
+        cls._monitor_threads.pop(simulation_id, None)
+
+        stdout_handle = cls._stdout_files.pop(simulation_id, None)
+        if stdout_handle:
+            try:
+                stdout_handle.close()
+            except Exception:
+                pass
+
+        stderr_handle = cls._stderr_files.pop(simulation_id, None)
+        if stderr_handle:
+            try:
+                stderr_handle.close()
+            except Exception:
+                pass
+
+        cls._release_python_memory()
+        cls._log_memory_snapshot("after cleanup", simulation_id)
     
     @classmethod
     def get_run_state(cls, simulation_id: str) -> Optional[SimulationRunState]:
@@ -464,6 +543,8 @@ class SimulationRunner:
             )
             monitor_thread.start()
             cls._monitor_threads[simulation_id] = monitor_thread
+
+            cls._log_memory_snapshot("simulation started", simulation_id)
             
             logger.info(f"模拟启动成功: {simulation_id}, pid={process.pid}, platform={platform}")
             
@@ -558,24 +639,8 @@ class SimulationRunner:
                 except Exception as e:
                     logger.error(f"停止图谱记忆更新器失败: {e}")
                 cls._graph_memory_enabled.pop(simulation_id, None)
-            
-            # 清理进程资源
-            cls._processes.pop(simulation_id, None)
-            cls._action_queues.pop(simulation_id, None)
-            
-            # 关闭日志文件句柄
-            if simulation_id in cls._stdout_files:
-                try:
-                    cls._stdout_files[simulation_id].close()
-                except Exception:
-                    pass
-                cls._stdout_files.pop(simulation_id, None)
-            if simulation_id in cls._stderr_files and cls._stderr_files[simulation_id]:
-                try:
-                    cls._stderr_files[simulation_id].close()
-                except Exception:
-                    pass
-                cls._stderr_files.pop(simulation_id, None)
+
+            cls._cleanup_simulation_runtime(simulation_id)
     
     @classmethod
     def _read_action_log(
@@ -816,6 +881,7 @@ class SimulationRunner:
             cls._graph_memory_enabled.pop(simulation_id, None)
         
         logger.info(f"模拟已停止: {simulation_id}")
+        cls._cleanup_simulation_runtime(simulation_id)
         return state
     
     @classmethod
@@ -1278,6 +1344,8 @@ class SimulationRunner:
         # 清理内存中的状态
         cls._processes.clear()
         cls._action_queues.clear()
+        cls._monitor_threads.clear()
+        cls._release_python_memory()
         
         logger.info("模拟进程清理完成")
     
