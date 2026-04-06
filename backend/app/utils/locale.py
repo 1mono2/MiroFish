@@ -5,7 +5,25 @@ from flask import request, has_request_context
 
 _thread_local = threading.local()
 
-_locales_dir = os.path.join(os.path.dirname(__file__), '..', '..', '..', 'locales')
+_base_dir = os.path.abspath(os.path.dirname(__file__))
+_locales_candidates = [
+    os.path.abspath(os.path.join(_base_dir, '..', '..', '..', 'locales')),
+    os.path.abspath(os.path.join(_base_dir, '..', '..', '..', 'frontend', 'locales')),
+    os.path.abspath(os.path.join(_base_dir, '..', '..', 'locales')),
+]
+
+_locales_dir = next(
+    (
+        candidate for candidate in _locales_candidates
+        if os.path.isfile(os.path.join(candidate, 'languages.json'))
+    ),
+    None,
+)
+
+if _locales_dir is None:
+    raise FileNotFoundError(
+        f"Locale files not found. Checked: {', '.join(_locales_candidates)}"
+    )
 
 # Load language registry
 with open(os.path.join(_locales_dir, 'languages.json'), 'r', encoding='utf-8') as f:
