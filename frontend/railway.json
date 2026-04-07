@@ -9,6 +9,7 @@
   },
   "deploy": {
     "startCommand": "npx serve -s dist -l $PORT",
+    "sleepApplication": true,
     "restartPolicyType": "ON_FAILURE",
     "restartPolicyMaxRetries": 3
   }
