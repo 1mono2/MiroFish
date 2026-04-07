@@ -1,25 +1,22 @@
 import { createI18n } from 'vue-i18n'
-import languages from '../../locales/languages.json'
+import languages from '@locales/languages.json'
+import en from '@locales/en.json'
+import ja from '@locales/ja.json'
+import zh from '@locales/zh.json'
 
-const localeFiles = import.meta.glob('../../locales/!(languages).json', { eager: true })
+const messages = { en, ja, zh }
 
-const messages = {}
-const availableLocales = []
-
-for (const path in localeFiles) {
-  const key = path.match(/\/([^/]+)\.json$/)[1]
-  if (languages[key]) {
-    messages[key] = localeFiles[path].default
-    availableLocales.push({ key, label: languages[key].label })
-  }
-}
+const availableLocales = Object.keys(messages).map((key) => ({
+  key,
+  label: languages[key].label
+}))
 
 const savedLocale = localStorage.getItem('locale') || 'ja'
 
 const i18n = createI18n({
   legacy: false,
   locale: savedLocale,
-  fallbackLocale: 'zh',
+  fallbackLocale: 'ja',
   messages
 })
 
