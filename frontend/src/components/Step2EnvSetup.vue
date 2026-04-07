@@ -2,20 +2,20 @@
   <div class="env-setup-panel">
     <div class="scroll-container">
 
-      <!-- 事前設定パネル -->
+      <!-- Pre-config panel -->
       <div v-if="!configReady" class="pre-config-card">
         <div class="pre-config-header">
-          <span class="pre-config-title">シミュレーション設定</span>
-          <span class="pre-config-desc">エージェントとラウンドを設定してから準備を開始してください</span>
+          <span class="pre-config-title">{{ $t('step2.preConfigTitle') }}</span>
+          <span class="pre-config-desc">{{ $t('step2.preConfigDesc') }}</span>
         </div>
 
-        <!-- エンティティタイプ選択 -->
+        <!-- Entity type selection -->
         <div class="pre-config-section">
           <div class="pre-config-label">
-            エンティティタイプ
-            <span class="pre-config-hint">（少ないほど高速・低コスト）</span>
+            {{ $t('step2.preConfigEntityTypes') }}
+            <span class="pre-config-hint">{{ $t('step2.preConfigEntityTypesHint') }}</span>
           </div>
-          <div v-if="fetchingEntityTypes" class="pre-config-loading">グラフから読み込み中...</div>
+          <div v-if="fetchingEntityTypes" class="pre-config-loading">{{ $t('step2.preConfigLoadingGraph') }}</div>
           <div v-else class="entity-type-grid">
             <label
               v-for="type in availableEntityTypes"
@@ -25,23 +25,23 @@
             >
               <input type="checkbox" :value="type" v-model="selectedEntityTypes" />
               <span class="et-name">{{ type }}</span>
-              <span class="et-count">{{ entityTypeCounts[type] }}体</span>
+              <span class="et-count">{{ entityTypeCounts[type] }}{{ $t('step2.agentUnit') }}</span>
             </label>
           </div>
           <div v-if="!fetchingEntityTypes && estimatedAgentCount > 0" class="estimate-row">
-            <span class="estimate-label">対象エンティティ数</span>
+            <span class="estimate-label">{{ $t('step2.preConfigTargetEntities') }}</span>
             <span class="estimate-value" :class="{ 'estimate-warn': estimatedAgentCount > 40 }">
-              {{ estimatedAgentCount }} 体
+              {{ estimatedAgentCount }} {{ $t('step2.agentUnit') }}
             </span>
-            <span v-if="estimatedAgentCount > 40" class="estimate-tip">上限設定を推奨</span>
+            <span v-if="estimatedAgentCount > 40" class="estimate-tip">{{ $t('step2.preConfigRecommendCap') }}</span>
           </div>
         </div>
 
-        <!-- 最大エージェント数 -->
+        <!-- Max agents -->
         <div class="pre-config-section">
           <div class="pre-config-label">
-            最大エージェント数
-            <span class="pre-config-hint">（推奨: 20〜30体）</span>
+            {{ $t('step2.preConfigMaxAgents') }}
+            <span class="pre-config-hint">{{ $t('step2.preConfigMaxAgentsHint') }}</span>
           </div>
           <div class="rounds-inline">
             <input
@@ -54,24 +54,24 @@
               :style="{ '--percent': ((maxAgents - 5) / (100 - 5)) * 100 + '%' }"
             />
             <div class="rounds-inline-info">
-              <span class="rounds-inline-value">{{ maxAgents }} 体</span>
+              <span class="rounds-inline-value">{{ maxAgents }} {{ $t('step2.agentUnit') }}</span>
               <span class="rounds-inline-est" :class="{ 'estimate-warn': maxAgents > 40 }">
-                {{ maxAgents > 40 ? '多め・時間・コスト増' : maxAgents <= 20 ? '軽量・高速' : '推奨範囲内' }}
+                {{ maxAgents > 40 ? $t('step2.preConfigAgentsTooHigh') : maxAgents <= 20 ? $t('step2.preConfigAgentsLightweight') : $t('step2.preConfigAgentsRecommended') }}
               </span>
             </div>
           </div>
           <div class="pre-range-marks">
             <span>5</span>
-            <span class="mark-recommend" :class="{ active: maxAgents === 20 }" @click="maxAgents = 20">20 (推奨)</span>
+            <span class="mark-recommend" :class="{ active: maxAgents === 20 }" @click="maxAgents = 20">20 ({{ $t('step2.recommended') }})</span>
             <span>100</span>
           </div>
         </div>
 
-        <!-- ラウンド数 -->
+        <!-- Rounds -->
         <div class="pre-config-section">
           <div class="pre-config-label">
-            ラウンド数
-            <span class="pre-config-hint">（推奨: 20〜40）</span>
+            {{ $t('step2.preConfigRounds') }}
+            <span class="pre-config-hint">{{ $t('step2.preConfigRoundsHint') }}</span>
           </div>
           <div class="rounds-inline">
             <input
@@ -84,9 +84,9 @@
               :style="{ '--percent': ((customMaxRounds - 5) / (96 - 5)) * 100 + '%' }"
             />
             <div class="rounds-inline-info">
-              <span class="rounds-inline-value">{{ customMaxRounds }} ラウンド</span>
+              <span class="rounds-inline-value">{{ customMaxRounds }} {{ $t('step2.roundsUnit') }}</span>
               <span v-if="estimatedAgentCount > 0" class="rounds-inline-est">
-                目安 {{ Math.round(estimatedAgentCount * customMaxRounds * 0.008) }}〜{{ Math.round(estimatedAgentCount * customMaxRounds * 0.015) }} 分
+                {{ $t('step2.preConfigEstimateTime', { min: Math.round(estimatedAgentCount * customMaxRounds * 0.008), max: Math.round(estimatedAgentCount * customMaxRounds * 0.015) }) }}
               </span>
             </div>
           </div>
@@ -96,7 +96,7 @@
               class="mark-recommend"
               :class="{ active: customMaxRounds === 20 }"
               @click="customMaxRounds = 20"
-            >20 (推奨)</span>
+            >20 ({{ $t('step2.recommended') }})</span>
             <span>96</span>
           </div>
         </div>
@@ -106,7 +106,7 @@
           :disabled="fetchingEntityTypes || selectedEntityTypes.length === 0"
           @click="startWithConfig"
         >
-          準備を開始 ➝
+          {{ $t('step2.preConfigStart') }}
         </button>
       </div>
 
