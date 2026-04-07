@@ -26,5 +26,9 @@
   "de": {
     "label": "Deutsch",
     "llmInstruction": "Bitte antworten Sie auf Deutsch."
+  },
+  "ja": {
+    "label": "日本語",
+    "llmInstruction": "日本語で回答してください。"
   }
 }

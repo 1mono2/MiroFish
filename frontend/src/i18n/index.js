@@ -1,8 +1,8 @@
 import { createI18n } from 'vue-i18n'
-import languages from '@locales/languages.json'
-import en from '@locales/en.json'
-import ja from '@locales/ja.json'
-import zh from '@locales/zh.json'
+import languages from '../../locales/languages.json'
+import en from '../../locales/en.json'
+import ja from '../../locales/ja.json'
+import zh from '../../locales/zh.json'
 
 const messages = { en, ja, zh }
 
