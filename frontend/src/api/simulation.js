@@ -186,10 +186,18 @@ export const getSimulationHistory = (limit = 20) => {
 }
 
 /**
+ * 删除历史模拟（可选级联删除关联项目和报告）
+ * @param {string} simulationId
+ * @param {Object} params - { delete_project?: boolean, delete_reports?: boolean }
+ */
+export const deleteSimulationHistory = (simulationId, params = { delete_project: true, delete_reports: true }) => {
+  return service.delete(`/api/simulation/${simulationId}`, { params })
+}
+
+/**
  * グラフエンティティ一覧取得（エンティティタイプ選択用）
  * @param {string} graphId
  */
 export const getGraphEntities = (graphId) => {
   return service.get(`/api/simulation/entities/${graphId}`, { params: { enrich: false } })
 }
-

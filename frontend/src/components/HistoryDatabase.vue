@@ -183,6 +183,11 @@
             <div class="modal-playback-hint">
               <span class="hint-text">{{ $t('history.replayHint') }}</span>
             </div>
+            <div class="modal-danger-zone">
+              <button class="modal-delete-btn" @click="deleteSelectedProject" :disabled="deleting">
+                {{ deleting ? $t('history.deleting') : $t('history.deleteProject') }}
+              </button>
+            </div>
           </div>
         </div>
       </Transition>
@@ -194,7 +199,7 @@
 import { ref, computed, onMounted, onUnmounted, onActivated, watch, nextTick } from 'vue'
 import { useRouter, useRoute } from 'vue-router'
 import { useI18n } from 'vue-i18n'
-import { getSimulationHistory } from '../api/simulation'
+import { getSimulationHistory, deleteSimulationHistory } from '../api/simulation'
 
 const router = useRouter()
 const route = useRoute()
@@ -207,6 +212,7 @@ const isExpanded = ref(false)
 const hoveringCard = ref(null)
 const historyContainer = ref(null)
 const selectedProject = ref(null)  // 当前选中的项目（用于弹窗）
+const deleting = ref(false)
 let observer = null
 let isAnimating = false  // 动画锁，防止闪烁
 let expandDebounceTimer = null  // 防抖定时器
@@ -400,7 +406,32 @@ const navigateToProject = (simulation) => {
 
 // 关闭弹窗
 const closeModal = () => {
+  if (deleting.value) return
   selectedProject.value = null
+}
+
+const deleteSelectedProject = async () => {
+  const simulationId = selectedProject.value?.simulation_id
+  if (!simulationId || deleting.value) return
+
+  const confirmed = window.confirm(t('history.deleteConfirm'))
+  if (!confirmed) return
+
+  try {
+    deleting.value = true
+    await deleteSimulationHistory(simulationId, {
+      delete_project: true,
+      delete_reports: true
+    })
+    await loadHistory()
+    closeModal()
+  } catch (error) {
+    console.error('删除历史项目失败:', error)
+    const message = error?.response?.data?.error || error?.message || t('history.deleteFailed')
+    window.alert(message)
+  } finally {
+    deleting.value = false
+  }
 }
 
 // 导航到图谱构建页面（Project）
@@ -1338,5 +1369,34 @@ onUnmounted(() => {
   letter-spacing: 0.3px;
   text-align: center;
   line-height: 1.5;
+}
+
+.modal-danger-zone {
+  display: flex;
+  justify-content: center;
+  padding: 0 32px 24px;
+  background: #FFFFFF;
+}
+
+.modal-delete-btn {
+  padding: 10px 16px;
+  border: 1px solid #FCA5A5;
+  color: #B91C1C;
+  background: #FEF2F2;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.8rem;
+  font-weight: 600;
+  transition: all 0.2s ease;
+}
+
+.modal-delete-btn:hover:not(:disabled) {
+  background: #FEE2E2;
+  border-color: #F87171;
+}
+
+.modal-delete-btn:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
 }
 </style>

@@ -4,6 +4,8 @@ Step2: Zep实体读取与过滤、OASIS模拟准备与运行（全程自动化�
 """
 
 import os
+import json
+import shutil
 import traceback
 from flask import request, jsonify, send_file
 
@@ -879,6 +881,34 @@ def _get_report_id_for_simulation(simulation_id: str) -> str:
         return None
 
 
+def _delete_reports_for_simulation(simulation_id: str) -> int:
+    """删除与 simulation_id 关联的所有报告目录，返回删除数量。"""
+    reports_dir = os.path.join(Config.UPLOAD_FOLDER, 'reports')
+    if not os.path.exists(reports_dir):
+        return 0
+
+    deleted_count = 0
+    for report_folder in os.listdir(reports_dir):
+        report_path = os.path.join(reports_dir, report_folder)
+        if not os.path.isdir(report_path):
+            continue
+
+        meta_file = os.path.join(report_path, "meta.json")
+        if not os.path.exists(meta_file):
+            continue
+
+        try:
+            with open(meta_file, 'r', encoding='utf-8') as f:
+                meta = json.load(f)
+            if meta.get("simulation_id") == simulation_id:
+                shutil.rmtree(report_path, ignore_errors=True)
+                deleted_count += 1
+        except Exception as e:
+            logger.warning(f"删除报告目录失败: simulation={simulation_id}, report={report_folder}, error={e}")
+
+    return deleted_count
+
+
 @simulation_bp.route('/history', methods=['GET'])
 def get_simulation_history():
     """
@@ -986,6 +1016,53 @@ def get_simulation_history():
         
     except Exception as e:
         logger.error(f"获取历史模拟失败: {str(e)}")
+        return jsonify({
+            "success": False,
+            "error": str(e),
+            "traceback": traceback.format_exc()
+        }), 500
+
+
+@simulation_bp.route('/<simulation_id>', methods=['DELETE'])
+def delete_simulation(simulation_id: str):
+    """
+    删除指定模拟，可选级联删除关联项目和报告
+    Query 参数:
+      - delete_project: true/false，默认 true
+      - delete_reports: true/false，默认 true
+    """
+    try:
+        delete_project = request.args.get('delete_project', 'true').lower() == 'true'
+        delete_reports = request.args.get('delete_reports', 'true').lower() == 'true'
+
+        manager = SimulationManager()
+        state = manager.get_simulation(simulation_id)
+        if not state:
+            return jsonify({
+                "success": False,
+                "error": t('api.simulationNotFound', id=simulation_id)
+            }), 404
+
+        project_deleted = False
+        if delete_project and state.project_id:
+            project_deleted = ProjectManager.delete_project(state.project_id)
+
+        reports_deleted = _delete_reports_for_simulation(simulation_id) if delete_reports else 0
+        simulation_deleted = manager.delete_simulation(simulation_id)
+
+        return jsonify({
+            "success": True,
+            "message": f"Deleted simulation: {simulation_id}",
+            "data": {
+                "simulation_id": simulation_id,
+                "project_id": state.project_id,
+                "simulation_deleted": simulation_deleted,
+                "project_deleted": project_deleted,
+                "reports_deleted": reports_deleted
+            }
+        })
+    except Exception as e:
+        logger.error(f"删除模拟失败: {simulation_id}, error={str(e)}")
         return jsonify({
             "success": False,
             "error": str(e),
